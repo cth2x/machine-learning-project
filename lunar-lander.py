@@ -29,13 +29,14 @@ def choose_action(state, Q, epsilon, action_space):
 alpha = 0.1  # Learning rate
 gamma = 0.99  # Discount factor
 epsilon = 0.3  # Exploration rate (start high, can decay later)
-training_episodes = 1000  # Episodes without GUI
-visual_episodes = 10      # Episodes with GUI after training
+training_episodes = 10000  # Total episodes, first 5000 without GUI
+gui_switch_point = 5000    # Switch to GUI after 5000 episodes
+visual_episodes = 10       # Episodes with GUI after switch
 
 # Q-table as a dictionary
 Q = {}  # Shared across both phases
 
-# Phase 1: Training without GUI
+# Phase 1: Training without GUI for first 5000 episodes
 env = gym.make("LunarLander-v3", render_mode=None)  # No rendering
 action_space = env.action_space
 n_actions = action_space.n
@@ -72,12 +73,13 @@ for episode in range(training_episodes):
     if epsilon > 0.01:
         epsilon *= 0.995
 
-env.close()  # Close the non-rendering environment
+    # Switch to GUI after 5000 episodes
+    if episode + 1 == gui_switch_point:
+        env.close()  # Close non-rendering environment
+        env = gym.make("LunarLander-v3", render_mode="human")  # Switch to GUI
+        print("Switching to GUI for remaining episodes...")
 
-# Phase 2: Visualization with GUI
-env = gym.make("LunarLander-v3", render_mode="human")  # Enable GUI
-print("Switching to GUI for visualization...")
-
+# Phase 2: Continue with GUI for remaining episodes, then extra visual ones
 for episode in range(visual_episodes):
     observation, info = env.reset(seed=42)
     state = discretize_state(observation)
@@ -94,7 +96,7 @@ for episode in range(visual_episodes):
         if next_state not in Q:
             Q[next_state] = np.zeros(n_actions)
         
-        # SARSA update (optional, can remove if only visualizing)
+        # SARSA update (optional during extra visual phase)
         Q[state][action] += alpha * (reward + gamma * Q[next_state][next_action] - Q[state][action])
         
         state = next_state
