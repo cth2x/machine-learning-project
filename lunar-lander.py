@@ -1,111 +1,109 @@
 import gymnasium as gym
 import numpy as np
 
-# Discretization function
-def discretize_state(observation):
-    bins = [
-        np.linspace(-1.5, 1.5, 4),  # x position
-        np.linspace(0, 1.5, 4),    # y position
-        np.linspace(-1, 1, 4),     # x velocity
-        np.linspace(-1, 1, 4),     # y velocity
-        np.linspace(-0.5, 0.5, 4), # angle
-        np.linspace(-1, 1, 4),     # angular velocity
-        np.linspace(0, 1, 2),      # left leg contact (0 or 1)
-        np.linspace(0, 1, 2)       # right leg contact (0 or 1)
-    ]
-    state = tuple(np.digitize(observation[i], bins[i]) - 1 for i in range(8))  # -1 to start indices at 0
-    return state
+class LunarLanderAgent:
+    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, training_episodes=100000, gui_switch_point=5000, visual_episodes=10):
+        self.alpha = alpha  # Learning rate
+        self.gamma = gamma  # Discount factor
+        self.epsilon = epsilon  # Exploration rate
+        self.training_episodes = training_episodes
+        self.gui_switch_point = gui_switch_point
+        self.visual_episodes = visual_episodes
+        self.Q = {}
+        self.env = gym.make("LunarLander-v3", render_mode=None)  # No rendering initially
+        self.action_space = self.env.action_space
+        self.n_actions = self.action_space.n
 
-# ε-greedy policy
-def choose_action(state, Q, epsilon, action_space):
-    if state not in Q:  # Initialize Q-values for new states
-        Q[state] = np.zeros(action_space.n)
-    if np.random.random() < epsilon:  # Explore
-        return action_space.sample()
-    else:  # Exploit
-        return np.argmax(Q[state])  # Pick action with highest Q-value
+    def discretize_state(self, observation):
+        """Convert continuous state into discrete bins."""
+        bins = [
+            np.linspace(-1.5, 1.5, 4),  # x position
+            np.linspace(0, 1.5, 4),    # y position
+            np.linspace(-1, 1, 4),     # x velocity
+            np.linspace(-1, 1, 4),     # y velocity
+            np.linspace(-0.5, 0.5, 4), # angle
+            np.linspace(-1, 1, 4),     # angular velocity
+            np.linspace(0, 1, 2),      # left leg contact (0 or 1)
+            np.linspace(0, 1, 2)       # right leg contact (0 or 1)
+        ]
+        return tuple(np.digitize(observation[i], bins[i]) - 1 for i in range(8))  # Convert to discrete state
 
-# Hyperparameters
-alpha = 0.1  # Learning rate
-gamma = 0.99  # Discount factor
-epsilon = 0.3  # Exploration rate (start high, can decay later)
-training_episodes = 10000  # Total episodes, first 5000 without GUI
-gui_switch_point = 5000    # Switch to GUI after 5000 episodes
-visual_episodes = 10       # Episodes with GUI after switch
+    def choose_action(self, state):
+        """Select action using ε-greedy policy."""
+        if state not in self.Q:
+            self.Q[state] = np.zeros(self.n_actions)
 
-# Q-table as a dictionary
-Q = {}  # Shared across both phases
+        if np.random.random() < self.epsilon:  # Explore
+            return self.action_space.sample()
+        return np.argmax(self.Q[state])  # Exploit best action
 
-# Phase 1: Training without GUI for first 5000 episodes
-env = gym.make("LunarLander-v3", render_mode=None)  # No rendering
-action_space = env.action_space
-n_actions = action_space.n
+    def update_q_value(self, state, action, reward, next_state, next_action):
+        """SARSA Q-value update."""
+        if next_state not in self.Q:
+            self.Q[next_state] = np.zeros(self.n_actions)
 
-print("Training without GUI...")
-for episode in range(training_episodes):
-    observation, info = env.reset(seed=42)
-    state = discretize_state(observation)
-    action = choose_action(state, Q, epsilon, action_space)
-    
-    total_reward = 0
-    done = False
-    
-    while not done:
-        next_observation, reward, terminated, truncated, info = env.step(action)
-        next_state = discretize_state(next_observation)
-        next_action = choose_action(next_state, Q, epsilon, action_space)
-        
-        if next_state not in Q:
-            Q[next_state] = np.zeros(n_actions)
-        
-        # SARSA update
-        Q[state][action] += alpha * (reward + gamma * Q[next_state][next_action] - Q[state][action])
-        
-        state = next_state
-        action = next_action
-        total_reward += reward
-        
-        done = terminated or truncated
-        if done:
-            print(f"Episode {episode + 1}/{training_episodes}: Total Reward = {total_reward}")
-            observation, info = env.reset()
+        self.Q[state][action] += self.alpha * (
+            reward + self.gamma * self.Q[next_state][next_action] - self.Q[state][action]
+        )
 
-    if epsilon > 0.01:
-        epsilon *= 0.995
+    def train(self):
+        """Train the agent with SARSA."""
+        print("Training without GUI...")
+        for episode in range(self.training_episodes):
+            observation, _ = self.env.reset(seed=42)
+            state = self.discretize_state(observation)
+            action = self.choose_action(state)
+            total_reward = 0
+            done = False
 
-    # Switch to GUI after 5000 episodes
-    if episode + 1 == gui_switch_point:
-        env.close()  # Close non-rendering environment
-        env = gym.make("LunarLander-v3", render_mode="human")  # Switch to GUI
-        print("Switching to GUI for remaining episodes...")
+            while not done:
+                next_observation, reward, terminated, truncated, _ = self.env.step(action)
+                next_state = self.discretize_state(next_observation)
+                next_action = self.choose_action(next_state)
+                
+                self.update_q_value(state, action, reward, next_state, next_action)
 
-# Phase 2: Continue with GUI for remaining episodes, then extra visual ones
-for episode in range(visual_episodes):
-    observation, info = env.reset(seed=42)
-    state = discretize_state(observation)
-    action = choose_action(state, Q, epsilon, action_space)
-    
-    total_reward = 0
-    done = False
-    
-    while not done:
-        next_observation, reward, terminated, truncated, info = env.step(action)
-        next_state = discretize_state(next_observation)
-        next_action = choose_action(next_state, Q, epsilon, action_space)
-        
-        if next_state not in Q:
-            Q[next_state] = np.zeros(n_actions)
-        
-        # SARSA update (optional during extra visual phase)
-        Q[state][action] += alpha * (reward + gamma * Q[next_state][next_action] - Q[state][action])
-        
-        state = next_state
-        action = next_action
-        total_reward += reward
-        
-        done = terminated or truncated
-        if done:
-            print(f"Visual Episode {episode + 1}/{visual_episodes}: Total Reward = {total_reward}")
-            observation, info = env.reset()
+                state, action = next_state, next_action
+                total_reward += reward
+                done = terminated or truncated
 
-env.close()  # Close the rendering environment
+            print(f"Episode {episode + 1}/{self.training_episodes}: Total Reward = {total_reward}")
+
+            if self.epsilon > 0.01:
+                self.epsilon *= 0.995  # Decay epsilon over time
+
+            # Switch to GUI mode after a certain number of episodes
+            if episode + 1 == self.gui_switch_point:
+                self.env.close()
+                self.env = gym.make("LunarLander-v3", render_mode="human")
+                print("Switching to GUI for remaining episodes...")
+
+    def visualize(self):
+        """Run a few episodes with visualization."""
+        print("Visualizing final episodes...")
+        for episode in range(self.visual_episodes):
+            observation, _ = self.env.reset(seed=42)
+            state = self.discretize_state(observation)
+            action = self.choose_action(state)
+            total_reward = 0
+            done = False
+
+            while not done:
+                next_observation, reward, terminated, truncated, _ = self.env.step(action)
+                next_state = self.discretize_state(next_observation)
+                next_action = self.choose_action(next_state)
+
+                self.update_q_value(state, action, reward, next_state, next_action)
+
+                state, action = next_state, next_action
+                total_reward += reward
+                done = terminated or truncated
+
+            print(f"Visual Episode {episode + 1}/{self.visual_episodes}: Total Reward = {total_reward}")
+
+        self.env.close()
+
+if __name__ == "__main__":
+    agent = LunarLanderAgent()
+    agent.train()
+    agent.visualize()
