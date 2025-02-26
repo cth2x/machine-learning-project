@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 class LunarLanderAgentSARSA:
-    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=5000, gui_switch_point=4000, visual_episodes=10):
+    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=5000, gui_switch_point=1500, visual_episodes=10):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -71,20 +71,13 @@ class LunarLanderAgentSARSA:
     def training_updates_to_console(self, episode, total_reward):
         self.clear_console()
         frac = ((episode + 1) / self.gui_switch_point) * 100
-        success = 1 if self.is_successful_landing(total_reward, self.env.unwrapped.state) else 0
+        # success = 1 if self.is_successful_landing(total_reward, self.env.unwrapped.state) else 0
         print(f"Training {round(frac)}% complete")
         print(f"Current reward = {round(total_reward)}")
-        print(f"Success = {bool(success)}")
+        # print(f"Success = {bool(success)}")
     
     def clear_console(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-
-    def training_updates_to_console(self, episode, total_reward):
-        self.clear_console()
-        frac = ((episode + 1) / self.gui_switch_point) * 100
-        round(frac)
-        print(f"Training {round(frac)}% complete")
-        print(f"Current reward = {round(total_reward)}")
 
     def train(self):
         print("Training without GUI...")

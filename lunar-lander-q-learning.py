@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 class LunarLanderAgentQLearning:
-    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=5000, gui_switch_point=4000, visual_episodes=10):
+    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=10001, gui_switch_point=10000, visual_episodes=10):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -40,11 +40,9 @@ class LunarLanderAgentQLearning:
             return self.action_space.sample()
         return np.argmax(self.Q[state])
 
-    # Modified update rule for Q-Learning
     def update_q_value(self, state, action, reward, next_state):
         if next_state not in self.Q:
             self.Q[next_state] = np.zeros(self.n_actions)
-        # Q-Learning update: use max Q-value over all actions in next_state
         self.Q[state][action] += self.alpha * (
             reward + self.gamma * np.max(self.Q[next_state]) - self.Q[state][action]
         )
@@ -143,6 +141,7 @@ class LunarLanderAgentQLearning:
         plt.grid(True)
         plt.savefig("rewards_plot.png")
         plt.show()
+        plt.close()
 
         plt.figure(figsize=(10, 5))
         plt.plot(self.epsilon_history, label="Epsilon", color="orange")
@@ -153,17 +152,19 @@ class LunarLanderAgentQLearning:
         plt.grid(True)
         plt.savefig("epsilon_plot.png")
         plt.show()
+        plt.close()
 
         plt.figure(figsize=(10, 5))
         cumulative_success = np.cumsum(self.success_per_episode) / np.arange(1, len(self.success_per_episode) + 1) * 100
         plt.plot(cumulative_success, label="Cumulative Success Rate", color="green")
         plt.xlabel("Episode")
         plt.ylabel("Success Rate (%)")
-        plt.title("Q-Learning Progress - Cumulative Success Rate per Episode")  # Updated title
+        plt.title("Q-Learning Progress - Cumulative Success Rate per Episode") 
         plt.legend()
         plt.grid(True)
         plt.savefig("success_rate_plot.png")
         plt.show()
+        plt.close()
 
 if __name__ == "__main__":
     agent = LunarLanderAgentQLearning()
