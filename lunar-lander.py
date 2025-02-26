@@ -3,19 +3,18 @@ import numpy as np
 
 class LunarLanderAgent:
     def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, training_episodes=100000, gui_switch_point=5000, visual_episodes=10):
-        self.alpha = alpha  # Learning rate
-        self.gamma = gamma  # Discount factor
-        self.epsilon = epsilon  # Exploration rate
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
         self.training_episodes = training_episodes
         self.gui_switch_point = gui_switch_point
         self.visual_episodes = visual_episodes
         self.Q = {}
-        self.env = gym.make("LunarLander-v3", render_mode=None)  # No rendering initially
+        self.env = gym.make("LunarLander-v3", render_mode=None)
         self.action_space = self.env.action_space
         self.n_actions = self.action_space.n
 
     def discretize_state(self, observation):
-        """Convert continuous state into discrete bins."""
         bins = [
             np.linspace(-1.5, 1.5, 4),  # x position
             np.linspace(0, 1.5, 4),    # y position
@@ -26,19 +25,17 @@ class LunarLanderAgent:
             np.linspace(0, 1, 2),      # left leg contact (0 or 1)
             np.linspace(0, 1, 2)       # right leg contact (0 or 1)
         ]
-        return tuple(np.digitize(observation[i], bins[i]) - 1 for i in range(8))  # Convert to discrete state
+        return tuple(np.digitize(observation[i], bins[i]) - 1 for i in range(8))
 
     def choose_action(self, state):
-        """Select action using ε-greedy policy."""
         if state not in self.Q:
             self.Q[state] = np.zeros(self.n_actions)
 
-        if np.random.random() < self.epsilon:  # Explore
+        if np.random.random() < self.epsilon:
             return self.action_space.sample()
-        return np.argmax(self.Q[state])  # Exploit best action
+        return np.argmax(self.Q[state])
 
     def update_q_value(self, state, action, reward, next_state, next_action):
-        """SARSA Q-value update."""
         if next_state not in self.Q:
             self.Q[next_state] = np.zeros(self.n_actions)
 
@@ -47,7 +44,6 @@ class LunarLanderAgent:
         )
 
     def train(self):
-        """Train the agent with SARSA."""
         print("Training without GUI...")
         for episode in range(self.training_episodes):
             observation, _ = self.env.reset(seed=42)
@@ -79,7 +75,6 @@ class LunarLanderAgent:
                 print("Switching to GUI for remaining episodes...")
 
     def visualize(self):
-        """Run a few episodes with visualization."""
         print("Visualizing final episodes...")
         for episode in range(self.visual_episodes):
             observation, _ = self.env.reset(seed=42)
