@@ -68,7 +68,7 @@ class LunarLanderAgentSARSA:
         print(f"Training {round(frac)}% complete")
         print(f"Current reward = {round(total_reward)}")
         print(f"Success = {bool(success)}")
-    
+
     def train(self):
         print("Training without GUI...")
         for episode in range(self.total_episodes):
