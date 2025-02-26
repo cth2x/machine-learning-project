@@ -5,11 +5,7 @@ import matplotlib.pyplot as plt
 import pygame  # For cleanup
 
 class LunarLanderAgentSARSA:
-<<<<<<< Updated upstream:lunar-lander-sarsa.py
-    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=5000, gui_switch_point=1500, visual_episodes=10):
-=======
     def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=10000, gui_switch_point=10000, visual_episodes=10):
->>>>>>> Stashed changes:lunar-lander.py
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -68,20 +64,10 @@ class LunarLanderAgentSARSA:
     def training_updates_to_console(self, episode, total_reward, final_observation):
         self.clear_console()
         frac = ((episode + 1) / self.gui_switch_point) * 100
-<<<<<<< Updated upstream:lunar-lander-sarsa.py
-        # success = 1 if self.is_successful_landing(total_reward, self.env.unwrapped.state) else 0
-        print(f"Training {round(frac)}% complete")
-        print(f"Current reward = {round(total_reward)}")
-        # print(f"Success = {bool(success)}")
-    
-    def clear_console(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-=======
         success = 1 if self.is_successful_landing(total_reward, final_observation) else 0
         print(f"Training {round(frac)}% complete")
         print(f"Current reward = {round(total_reward)}")
         print(f"Success = {bool(success)}")
->>>>>>> Stashed changes:lunar-lander.py
 
     def train(self):
         print("Training without GUI...")
