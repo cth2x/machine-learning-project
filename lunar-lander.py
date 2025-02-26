@@ -1,9 +1,10 @@
 import gymnasium as gym
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 
 class LunarLanderAgent:
-    def __init__(self, alpha=0.1, gamma=0.95, epsilon=0.1, training_episodes=10000, gui_switch_point=9980, visual_episodes=10):
+    def __init__(self, alpha=0.01, gamma=0.95, epsilon=0.3 training_episodes=10000, gui_switch_point=1000, visual_episodes=10):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -14,8 +15,8 @@ class LunarLanderAgent:
         self.env = gym.make("LunarLander-v3", render_mode=None)
         self.action_space = self.env.action_space
         self.n_actions = self.action_space.n
-        self.rewards_history = []  # Store rewards
-        self.epsilon_history = []  # Store epsilon values
+        self.rewards_history = []  # Store rewards for plotting
+        self.epsilon_history = []  # Store epsilon values for plotting
         self.successful_landings = 0  # Track total successful landings
         self.success_per_episode = []  # Track success (1 or 0) for each episode
 
@@ -35,6 +36,7 @@ class LunarLanderAgent:
     def choose_action(self, state):
         if state not in self.Q:
             self.Q[state] = np.zeros(self.n_actions)
+
         if np.random.random() < self.epsilon:
             return self.action_space.sample()
         return np.argmax(self.Q[state])
@@ -42,9 +44,13 @@ class LunarLanderAgent:
     def update_q_value(self, state, action, reward, next_state, next_action):
         if next_state not in self.Q:
             self.Q[next_state] = np.zeros(self.n_actions)
+
         self.Q[state][action] += self.alpha * (
             reward + self.gamma * self.Q[next_state][next_action] - self.Q[state][action]
         )
+    
+    def clear_console(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
 
     def is_successful_landing(self, total_reward, final_observation):
         """
@@ -52,7 +58,7 @@ class LunarLanderAgent:
         A successful landing typically has a high positive reward (e.g., > 200) and
         the lander is on the ground with both legs touching.
         """
-        success_threshold = 200  # Adjustable
+        success_threshold = 200  # Adjust this threshold based on your observations
         y_pos = final_observation[1]  # y position
         x_vel, y_vel = final_observation[2], final_observation[3]  # velocities
         left_leg, right_leg = final_observation[6], final_observation[7]  # leg contacts
@@ -61,6 +67,14 @@ class LunarLanderAgent:
                 abs(y_pos - 0) < 0.1 and  # Close to ground
                 abs(x_vel) < 0.1 and abs(y_vel) < 0.1 and  # Low velocity
                 left_leg == 1 and right_leg == 1)  # Both legs on ground
+
+    def training_updates_to_console(self, episode, total_reward):
+        self.clear_console()
+        frac = ((episode + 1) / self.training_episodes) * 100
+        success = 1 if self.is_successful_landing(total_reward, self.env.unwrapped.state) else 0
+        print(f"Training {round(frac)}% complete")
+        print(f"Current reward = {round(total_reward)}")
+        print(f"Success = {bool(success)}")
 
     def train(self):
         print("Training without GUI...")
@@ -84,24 +98,22 @@ class LunarLanderAgent:
 
             self.rewards_history.append(total_reward)  # Store reward
             self.epsilon_history.append(self.epsilon)  # Store epsilon
-
-            # Check if this episode resulted in a successful landing
             success = 1 if self.is_successful_landing(total_reward, next_observation) else 0
             self.success_per_episode.append(success)
             self.successful_landings += success
 
-            print(f"Episode {episode + 1}/{self.training_episodes}: Total Reward = {total_reward}, "
-                  f"Success = {bool(success)}")
+            self.training_updates_to_console(episode, total_reward)
 
             if self.epsilon > 0.01:
-                self.epsilon *= 0.995
+                self.epsilon *= 0.995  # Decay epsilon over time
 
+            # Switch to GUI mode after a certain number of episodes
             if episode + 1 == self.gui_switch_point:
                 self.env.close()
                 self.env = gym.make("LunarLander-v3", render_mode="human")
                 print("Switching to GUI for remaining episodes...")
 
-        # Calculate and print the success rate
+        # Calculate and print the success rate after training
         success_rate = (self.successful_landings / self.training_episodes) * 100
         print(f"Success Rate: {success_rate:.2f}% ({self.successful_landings}/{self.training_episodes} successful landings)")
 
@@ -118,12 +130,16 @@ class LunarLanderAgent:
                 next_observation, reward, terminated, truncated, _ = self.env.step(action)
                 next_state = self.discretize_state(next_observation)
                 next_action = self.choose_action(next_state)
+
                 self.update_q_value(state, action, reward, next_state, next_action)
+
                 state, action = next_state, next_action
                 total_reward += reward
                 done = terminated or truncated
 
-            print(f"Visual Episode {episode + 1}/{self.visual_episodes}: Total Reward = {total_reward}")
+            print(f"Visual Episode {episode + 1}/{self.visual_episodes}: Total Reward = {total_reward}, "
+                  f"Success = {bool(self.is_successful_landing(total_reward, next_observation))}")
+
         self.env.close()
 
     def plot_results(self):
@@ -162,7 +178,7 @@ class LunarLanderAgent:
         plt.show()
 
 if __name__ == "__main__":
-    agent = LunarLanderAgent(training_episodes=10000)
+    agent = LunarLanderAgent()
     agent.train()
     agent.visualize()
     agent.plot_results()
