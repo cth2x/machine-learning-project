@@ -4,11 +4,11 @@ import os
 import matplotlib.pyplot as plt
 
 class LunarLanderAgent:
-    def __init__(self, alpha=0.01, gamma=0.95, epsilon=0.3 training_episodes=10000, gui_switch_point=1000, visual_episodes=10):
+    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=5000, gui_switch_point=4000, visual_episodes=10):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
-        self.training_episodes = training_episodes
+        self.total_episodes = total_episodes
         self.gui_switch_point = gui_switch_point
         self.visual_episodes = visual_episodes
         self.Q = {}
@@ -70,7 +70,7 @@ class LunarLanderAgent:
 
     def training_updates_to_console(self, episode, total_reward):
         self.clear_console()
-        frac = ((episode + 1) / self.training_episodes) * 100
+        frac = ((episode + 1) / self.gui_switch_point) * 100
         success = 1 if self.is_successful_landing(total_reward, self.env.unwrapped.state) else 0
         print(f"Training {round(frac)}% complete")
         print(f"Current reward = {round(total_reward)}")
@@ -78,7 +78,7 @@ class LunarLanderAgent:
 
     def train(self):
         print("Training without GUI...")
-        for episode in range(self.training_episodes):
+        for episode in range(self.total_episodes):
             observation, _ = self.env.reset(seed=42)
             state = self.discretize_state(observation)
             action = self.choose_action(state)
@@ -113,9 +113,9 @@ class LunarLanderAgent:
                 self.env = gym.make("LunarLander-v3", render_mode="human")
                 print("Switching to GUI for remaining episodes...")
 
-        # Calculate and print the success rate after training
-        success_rate = (self.successful_landings / self.training_episodes) * 100
-        print(f"Success Rate: {success_rate:.2f}% ({self.successful_landings}/{self.training_episodes} successful landings)")
+        # Calculate and print the success rate
+        success_rate = (self.successful_landings / self.total_episodes) * 100
+        print(f"Success Rate: {success_rate:.2f}% ({self.successful_landings}/{self.total_episodes} successful landings)")
 
     def visualize(self):
         print("Visualizing final episodes...")
