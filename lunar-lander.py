@@ -1,9 +1,10 @@
 import gymnasium as gym
 import numpy as np
 import os
+import matplotlib.pyplot as plt
+import os
 
 class LunarLanderAgent:
-
     def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=5000, gui_switch_point=4000, visual_episodes=10):
         self.alpha = alpha
         self.gamma = gamma
@@ -15,6 +16,10 @@ class LunarLanderAgent:
         self.env = gym.make("LunarLander-v3", render_mode=None)
         self.action_space = self.env.action_space
         self.n_actions = self.action_space.n
+        self.rewards_history = []  # Store rewards for plotting
+        self.epsilon_history = []  # Store epsilon values for plotting
+        self.successful_landings = 0  # Track total successful landings
+        self.success_per_episode = []  # Track success (1 or 0) for each episode
 
     def discretize_state(self, observation):
         bins = [
@@ -48,6 +53,33 @@ class LunarLanderAgent:
     def clear_console(self):
         os.system('cls' if os.name == 'nt' else 'clear')
 
+    def is_successful_landing(self, total_reward, final_observation):
+        """
+        Determine if the landing is successful based on total reward and final state.
+        A successful landing typically has a high positive reward (e.g., > 200) and
+        the lander is on the ground with both legs touching.
+        """
+        success_threshold = 200  # Adjust this threshold based on your observations
+        y_pos = final_observation[1]  # y position
+        x_vel, y_vel = final_observation[2], final_observation[3]  # velocities
+        left_leg, right_leg = final_observation[6], final_observation[7]  # leg contacts
+
+        return (total_reward > success_threshold and 
+                abs(y_pos - 0) < 0.1 and  # Close to ground
+                abs(x_vel) < 0.1 and abs(y_vel) < 0.1 and  # Low velocity
+                left_leg == 1 and right_leg == 1)  # Both legs on ground
+
+    def training_updates_to_console(self, episode, total_reward):
+        self.clear_console()
+        frac = ((episode + 1) / self.gui_switch_point) * 100
+        success = 1 if self.is_successful_landing(total_reward, self.env.unwrapped.state) else 0
+        print(f"Training {round(frac)}% complete")
+        print(f"Current reward = {round(total_reward)}")
+        print(f"Success = {bool(success)}")
+    
+    def clear_console(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+
     def training_updates_to_console(self, episode, total_reward):
         self.clear_console()
         frac = ((episode + 1) / self.gui_switch_point) * 100
@@ -75,6 +107,12 @@ class LunarLanderAgent:
                 total_reward += reward
                 done = terminated or truncated
 
+            self.rewards_history.append(total_reward)  # Store reward
+            self.epsilon_history.append(self.epsilon)  # Store epsilon
+            success = 1 if self.is_successful_landing(total_reward, next_observation) else 0
+            self.success_per_episode.append(success)
+            self.successful_landings += success
+
             self.training_updates_to_console(episode, total_reward)
 
             if self.epsilon > 0.01:
@@ -85,6 +123,10 @@ class LunarLanderAgent:
                 self.env.close()
                 self.env = gym.make("LunarLander-v3", render_mode="human")
                 print("Switching to GUI for remaining episodes...")
+
+        # Calculate and print the success rate
+        success_rate = (self.successful_landings / self.total_episodes) * 100
+        print(f"Success Rate: {success_rate:.2f}% ({self.successful_landings}/{self.total_episodes} successful landings)")
 
     def visualize(self):
         print("Visualizing final episodes...")
@@ -106,11 +148,48 @@ class LunarLanderAgent:
                 total_reward += reward
                 done = terminated or truncated
 
-            print(f"Visual Episode {episode + 1}/{self.visual_episodes}: Total Reward = {total_reward}")
+            print(f"Visual Episode {episode + 1}/{self.visual_episodes}: Total Reward = {total_reward}, "
+                  f"Success = {bool(self.is_successful_landing(total_reward, next_observation))}")
 
         self.env.close()
+
+    def plot_results(self):
+        # Plot 1: Total Reward per Episode
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.rewards_history, label="Total Reward")
+        plt.xlabel("Episode")
+        plt.ylabel("Total Reward")
+        plt.title("SARSA Learning Progress - Total Reward per Episode")
+        plt.legend()
+        plt.grid(True)
+        plt.savefig("rewards_plot.png")
+        plt.show()
+
+        # Plot 2: Epsilon Decay Over Training
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.epsilon_history, label="Epsilon", color="orange")
+        plt.xlabel("Episode")
+        plt.ylabel("Epsilon Value")
+        plt.title("Epsilon Decay Over Training")
+        plt.legend()
+        plt.grid(True)
+        plt.savefig("epsilon_plot.png")
+        plt.show()
+
+        # Plot 3: Success Rate Over Episodes (Cumulative)
+        plt.figure(figsize=(10, 5))
+        cumulative_success = np.cumsum(self.success_per_episode) / np.arange(1, len(self.success_per_episode) + 1) * 100
+        plt.plot(cumulative_success, label="Cumulative Success Rate", color="green")
+        plt.xlabel("Episode")
+        plt.ylabel("Success Rate (%)")
+        plt.title("SARSA Learning Progress - Cumulative Success Rate per Episode")
+        plt.legend()
+        plt.grid(True)
+        plt.savefig("success_rate_plot.png")
+        plt.show()
 
 if __name__ == "__main__":
     agent = LunarLanderAgent()
     agent.train()
     agent.visualize()
+    agent.plot_results()
