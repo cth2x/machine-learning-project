@@ -4,11 +4,11 @@ import os
 
 class LunarLanderAgent:
 
-    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, training_episodes=10000, gui_switch_point=1000, visual_episodes=10):
+    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=5000, gui_switch_point=4000, visual_episodes=10):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
-        self.training_episodes = training_episodes
+        self.total_episodes = total_episodes
         self.gui_switch_point = gui_switch_point
         self.visual_episodes = visual_episodes
         self.Q = {}
@@ -50,14 +50,14 @@ class LunarLanderAgent:
 
     def training_updates_to_console(self, episode, total_reward):
         self.clear_console()
-        frac = ((episode + 1) / self.training_episodes) * 1000
+        frac = ((episode + 1) / self.gui_switch_point) * 100
         round(frac)
         print(f"Training {round(frac)}% complete")
         print(f"Current reward = {round(total_reward)}")
 
     def train(self):
         print("Training without GUI...")
-        for episode in range(self.training_episodes):
+        for episode in range(self.total_episodes):
             observation, _ = self.env.reset(seed=42)
             state = self.discretize_state(observation)
             action = self.choose_action(state)
