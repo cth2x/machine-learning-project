@@ -1,8 +1,10 @@
 import gymnasium as gym
 import numpy as np
+import os
 
 class LunarLanderAgent:
-    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, training_episodes=100000, gui_switch_point=5000, visual_episodes=10):
+
+    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, training_episodes=10000, gui_switch_point=1000, visual_episodes=10):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -42,6 +44,16 @@ class LunarLanderAgent:
         self.Q[state][action] += self.alpha * (
             reward + self.gamma * self.Q[next_state][next_action] - self.Q[state][action]
         )
+    
+    def clear_console(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+
+    def training_updates_to_console(self, episode, total_reward):
+        self.clear_console()
+        frac = ((episode + 1) / self.training_episodes) * 1000
+        round(frac)
+        print(f"Training {round(frac)}% complete")
+        print(f"Current reward = {round(total_reward)}")
 
     def train(self):
         print("Training without GUI...")
@@ -63,7 +75,7 @@ class LunarLanderAgent:
                 total_reward += reward
                 done = terminated or truncated
 
-            print(f"Episode {episode + 1}/{self.training_episodes}: Total Reward = {total_reward}")
+            self.training_updates_to_console(episode, total_reward)
 
             if self.epsilon > 0.01:
                 self.epsilon *= 0.995  # Decay epsilon over time
