@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 class LunarLanderAgentQLearning:
-    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=10001, gui_switch_point=10000, visual_episodes=10):
+    def __init__(self, alpha=0.01, gamma=0.99, epsilon=0.3, total_episodes=20001, gui_switch_point=19991, visual_episodes=10):
         self.alpha = alpha
         self.gamma = gamma
         self.epsilon = epsilon
@@ -96,8 +96,8 @@ class LunarLanderAgentQLearning:
 
             self.training_updates_to_console(episode, total_reward)
 
-            if self.epsilon > 0.01:
-                self.epsilon *= 0.995
+            if self.epsilon > 0.05:
+                self.epsilon *= 0.9999
 
             if episode + 1 == self.gui_switch_point:
                 self.env.close()
