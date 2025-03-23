@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 
 class LunarLanderAgentMC:
-    def __init__(self, gamma=0.99, epsilon=0.4, total_episodes=10000, gui_switch_point=9900, visual_episodes=10):
+    def __init__(self, gamma=0.9, epsilon=0.4, total_episodes=40000, gui_switch_point=39990, visual_episodes=10):
         self.gamma = gamma
         self.epsilon = epsilon
         self.total_episodes = total_episodes
@@ -64,7 +64,7 @@ class LunarLanderAgentMC:
                 left_leg == 1 and right_leg == 1)
 
     def training_updates_to_console(self, episode, total_reward):
-        if episode % 5000 == 0:
+        if episode % 1000 == 0:
             avg_reward = np.mean(self.rewards_history[-5000:])
             avg_success_rate = np.mean(self.success_per_episode[-5000:]) * 100
             print(f"Episode {episode}/{self.total_episodes} - Avg Reward: {avg_reward:.2f} - Success Rate: {avg_success_rate:.2f}%")
@@ -72,7 +72,7 @@ class LunarLanderAgentMC:
     def train(self):
         print("Training without GUI...")
         for episode in range(self.total_episodes):
-            observation, _ = self.env.reset(seed=42)
+            observation, _ = self.env.reset()
             state = self.discretize_state(observation)
             episode_data = []
             total_reward = 0
