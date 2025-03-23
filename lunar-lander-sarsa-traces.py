@@ -3,16 +3,17 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import pygame  # For cleanup
-import os
 
 
 class LunarLanderAgentSARSA:
+
     def __init__(
         self,
         alpha=0.1,
         gamma=0.99,
-        epsilon=0.3,
+        epsilon=0.5,
         epsilon_min=0.01,
+        lambda_trace=0.5,
         total_episodes=50000,
         visual_episodes=10,
     ):
@@ -20,6 +21,7 @@ class LunarLanderAgentSARSA:
         self.gamma = gamma
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
+        self.lambda_trace = lambda_trace
         self.total_episodes = total_episodes
         self.visual_episodes = visual_episodes
         self.Q = {}
@@ -33,14 +35,14 @@ class LunarLanderAgentSARSA:
 
     def discretize_state(self, observation):
         bins = [
-            np.linspace(-1.5, 1.5, 8),
-            np.linspace(0, 1.5, 8),
-            np.linspace(-1, 1, 8),
-            np.linspace(-1, 1, 8),
-            np.linspace(-0.5, 0.5, 8),
-            np.linspace(-1, 1, 8),
-            np.linspace(0, 1, 2),
-            np.linspace(0, 1, 2),
+            np.linspace(-1.5, 1.5, 8),  # x position
+            np.linspace(0, 1.5, 8),  # y position
+            np.linspace(-1, 1, 8),  # x velocity
+            np.linspace(-1, 1, 8),  # y velocity
+            np.linspace(-0.5, 0.5, 8),  # angle
+            np.linspace(-1, 1, 8),  # angular velocity
+            np.linspace(0, 1, 2),  # left leg contac
+            np.linspace(0, 1, 2),  # right leg contact
         ]
         return tuple(np.digitize(observation[i], bins[i]) - 1 for i in range(8))
 
@@ -50,15 +52,6 @@ class LunarLanderAgentSARSA:
         if np.random.random() < self.epsilon:
             return self.action_space.sample()
         return np.argmax(self.Q[state])
-
-    def update_q_value(self, state, action, reward, next_state, next_action):
-        if next_state not in self.Q:
-            self.Q[next_state] = np.zeros(self.n_actions)
-        self.Q[state][action] += self.alpha * (
-            reward
-            + self.gamma * self.Q[next_state][next_action]
-            - self.Q[state][action]
-        )
 
     def clear_console(self):
         os.system("cls" if os.name == "nt" else "clear")
@@ -91,6 +84,7 @@ class LunarLanderAgentSARSA:
             action = self.choose_action(state)
             total_reward = 0
             done = False
+            E = {}
 
             while not done:
                 next_observation, reward, terminated, truncated, _ = self.env.step(
@@ -98,7 +92,26 @@ class LunarLanderAgentSARSA:
                 )
                 next_state = self.discretize_state(next_observation)
                 next_action = self.choose_action(next_state)
-                self.update_q_value(state, action, reward, next_state, next_action)
+
+                if state not in self.Q:
+                    self.Q[state] = np.zeros(self.n_actions)
+                if next_state not in self.Q:
+                    self.Q[next_state] = np.zeros(self.n_actions)
+
+                delta = (
+                    reward
+                    + self.gamma * self.Q[next_state][next_action]
+                    - self.Q[state][action]
+                )
+
+                E[(state, action)] = E.get((state, action), 0) + 1
+
+                for s, a in list(E.keys()):
+                    self.Q[s][a] += self.alpha * delta * E[(s, a)]
+                    E[(s, a)] *= self.gamma * self.lambda_trace
+                    if E[(s, a)] < 1e-5:
+                        del E[(s, a)]
+
                 state, action = next_state, next_action
                 total_reward += reward
                 done = terminated or truncated
@@ -112,7 +125,6 @@ class LunarLanderAgentSARSA:
             self.successful_landings += success
 
             self.training_updates_to_console(episode, total_reward)
-
             self.epsilon = max(self.epsilon_min, self.epsilon * 0.9995)
 
         success_rate = (self.successful_landings / self.total_episodes) * 100
@@ -124,16 +136,16 @@ class LunarLanderAgentSARSA:
         pass
 
     def plot_results(self):
-        os.makedirs("sarsa/normal", exist_ok=True)
+        os.makedirs("sarsa/traces", exist_ok=True)
 
         plt.figure(figsize=(10, 5))
         plt.plot(self.rewards_history, label="Total Reward")
         plt.xlabel("Episode")
         plt.ylabel("Total Reward")
-        plt.title("SARSA Learning Progress - Total Reward per Episode")
+        plt.title("SARSA(λ) Learning Progress - Total Reward per Episode")
         plt.legend()
         plt.grid(True)
-        plt.savefig("sarsa/normal/rewards_plot.png")
+        plt.savefig("sarsa/traces/rewards_plot.png")
         plt.show(block=False)
         plt.close()
 
@@ -144,7 +156,7 @@ class LunarLanderAgentSARSA:
         plt.title("Epsilon Decay Over Training")
         plt.legend()
         plt.grid(True)
-        plt.savefig("sarsa/normal/epsilon_plot.png")
+        plt.savefig("sarsa/traces/epsilon_plot.png")
         plt.show(block=False)
         plt.close()
 
@@ -157,10 +169,10 @@ class LunarLanderAgentSARSA:
         plt.plot(cumulative_success, label="Cumulative Success Rate", color="green")
         plt.xlabel("Episode")
         plt.ylabel("Success Rate (%)")
-        plt.title("SARSA Learning Progress - Cumulative Success Rate per Episode")
+        plt.title("SARSA(λ) Learning Progress - Cumulative Success Rate per Episode")
         plt.legend()
         plt.grid(True)
-        plt.savefig("sarsa/normal/success_rate_plot.png")
+        plt.savefig("sarsa/traces/success_rate_plot.png")
         plt.show(block=False)
         plt.close()
 
