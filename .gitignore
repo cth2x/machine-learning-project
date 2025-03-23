@@ -3,3 +3,5 @@ __pycache__/
 venv_name/
 new_env/
 *.png
+venv_names/
+.DS_Store
